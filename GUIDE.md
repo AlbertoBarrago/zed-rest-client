@@ -1,58 +1,58 @@
-# REST Client per Zed — Guida completa
+# REST Client for Zed — Complete Guide
 
-## Struttura del progetto
+## Project structure
 
 ```
 rest/
-├── extension.toml          # manifest dell'estensione Zed
-├── Cargo.toml              # workspace Rust
+├── extension.toml          # Zed extension manifest
+├── Cargo.toml              # Rust workspace
 ├── languages/
 │   └── http/
-│       ├── config.toml     # associazione file .rest / .http
+│       ├── config.toml     # .rest / .http file associations
 │       └── highlights.scm  # syntax highlighting
 └── crates/
-    └── rest-runner/        # binario CLI che esegue le richieste
+    └── rest-runner/        # CLI binary that executes requests
         ├── Cargo.toml
         └── src/
             ├── main.rs
-            ├── parser.rs   # parsing del file .rest
-            ├── executor.rs # client HTTP (reqwest)
-            ├── env.rs      # caricamento variabili d'ambiente
-            └── output.rs   # output colorato nel terminale
+            ├── parser.rs   # .rest file parser
+            ├── executor.rs # HTTP client (reqwest)
+            ├── env.rs      # environment variable loading
+            └── output.rs   # colored terminal output
 ```
 
 ---
 
-## 1. Prerequisiti
+## 1. Prerequisites
 
-### Installa Rust
+### Install Rust
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
-Segui le istruzioni a schermo (opzione 1 — default). Al termine, riapri il terminale oppure esegui:
+Follow the on-screen instructions (option 1 — default). When done, reopen your terminal or run:
 ```bash
 source ~/.cargo/env
 ```
-Verifica che funzioni:
+Verify the installation:
 ```bash
-rustc --version   # es. rustc 1.78.0
-cargo --version   # es. cargo 1.78.0
+rustc --version   # e.g. rustc 1.78.0
+cargo --version   # e.g. cargo 1.78.0
 ```
 
 ---
 
-## 2. Build e installazione del CLI
+## 2. Build and install the CLI
 
-Il CLI `rest-runner` è il binario che Zed chiamerà per eseguire le richieste HTTP.
+The `rest-runner` CLI is the binary Zed will call to execute HTTP requests.
 
 ```bash
 cd ~/Code/zed-plugin/rest
 cargo install --path runner
 ```
 
-Questo compila il progetto e copia `rest-runner` in `~/.cargo/bin/`, che è già nel tuo PATH.
+This compiles the project and copies `rest-runner` to `~/.cargo/bin/`, which is already in your PATH.
 
-Verifica:
+Verify:
 ```bash
 rest-runner --version
 rest-runner --help
@@ -60,21 +60,21 @@ rest-runner --help
 
 ---
 
-## 3. Carica l'estensione in Zed (dev mode)
+## 3. Load the extension in Zed (dev mode)
 
-1. Apri **Zed**
-2. Vai su **Extensions** (icona puzzle in basso a sinistra, oppure `Cmd+Shift+X`)
-3. Clicca su **Install Dev Extension…**
-4. Seleziona la cartella `~/Code/zed-plugin/rest`
-5. Zed scarica automaticamente la grammatica TreeSitter da GitHub e compila il supporto al linguaggio
+1. Open **Zed**
+2. Go to **Extensions** (puzzle icon bottom-left, or `Cmd+Shift+X`)
+3. Click **Install Dev Extension…**
+4. Select the folder `~/Code/zed-plugin/rest`
+5. Zed automatically downloads the TreeSitter grammar from GitHub and compiles the language support
 
-Da questo momento, tutti i file `.rest` e `.http` vengono riconosciuti con syntax highlighting.
+From this point on, all `.rest` and `.http` files are recognized with syntax highlighting.
 
 ---
 
-## 4. Aggiungi il task "Run Request"
+## 4. Add the "Run Request" task
 
-Apri (o crea) il file `~/.config/zed/tasks.json` e aggiungi:
+Open (or create) `~/.config/zed/tasks.json` and add:
 
 ```json
 [
@@ -87,9 +87,9 @@ Apri (o crea) il file `~/.config/zed/tasks.json` e aggiungi:
 ]
 ```
 
-### Keybinding opzionale
+### Optional keybinding
 
-In `~/.config/zed/keymap.json` aggiungi:
+In `~/.config/zed/keymap.json` add:
 
 ```json
 [
@@ -102,7 +102,7 @@ In `~/.config/zed/keymap.json` aggiungi:
 ]
 ```
 
-Oppure, per eseguire direttamente il task REST senza passare dal menu:
+Or, to run the REST task directly without going through the menu:
 
 ```json
 [
@@ -117,37 +117,37 @@ Oppure, per eseguire direttamente il task REST senza passare dal menu:
 
 ---
 
-## 5. Test con un file .rest
+## 5. Test with a .rest file
 
-Crea un file `test.rest` in una qualsiasi cartella e aprilo in Zed:
+Create a `test.rest` file in any folder and open it in Zed:
 
 ```http
-### Ottieni un utente
+### Get a user
 GET https://jsonplaceholder.typicode.com/users/1
 
 ###
 
-### Crea un post
+### Create a post
 POST https://jsonplaceholder.typicode.com/posts
 Content-Type: application/json
 
 {
-  "title": "Ciao",
-  "body": "Mondo",
+  "title": "Hello",
+  "body": "World",
   "userId": 1
 }
 
 ###
 
-### Test con variabili
+### Test with variables
 GET {{baseUrl}}/users/{{userId}}
 Authorization: Bearer {{token}}
 ```
 
-Per eseguire la richiesta dove si trova il cursore:
-- Palette dei comandi (`Cmd+Shift+P`) → cerca `task: spawn` → seleziona `REST: Run Request at Cursor`
+To run the request at the cursor position:
+- Command palette (`Cmd+Shift+P`) → search `task: spawn` → select `REST: Run Request at Cursor`
 
-Il terminale integrato si apre e mostra:
+The integrated terminal opens and shows:
 
 ```
 HTTP/1.1 200 OK
@@ -167,9 +167,9 @@ content-type: application/json; charset=utf-8
 
 ---
 
-## 6. Variabili d'ambiente
+## 6. Environment variables
 
-Crea un file `.rest-client.env.json` nella stessa cartella del file `.rest`:
+Create a `.rest-client.env.json` file in the same folder as your `.rest` file:
 
 ```json
 {
@@ -186,36 +186,36 @@ Crea un file `.rest-client.env.json` nella stessa cartella del file `.rest`:
 }
 ```
 
-Per usare un ambiente specifico, aggiungi il flag `--env`:
+To use a specific environment, add the `--env` flag:
 
 ```json
 "args": ["$ZED_FILE", "--line", "$ZED_ROW", "--env", "local"]
 ```
 
-Oppure chiamalo manualmente dal terminale:
+Or call it manually from the terminal:
 
 ```bash
 rest-runner test.rest --line 15 --env prod
-rest-runner test.rest --name "Crea un post"
-rest-runner test.rest --verbose   # mostra anche gli header della richiesta
+rest-runner test.rest --name "Create a post"
+rest-runner test.rest --verbose   # also shows request headers
 ```
 
-### Variabili built-in
+### Built-in variables
 
-| Sintassi | Risultato |
+| Syntax | Result |
 |---|---|
-| `{{$guid}}` | UUID v4 casuale |
-| `{{$timestamp}}` | Unix timestamp in secondi |
-| `{{$randomInt}}` | Numero intero casuale 0–999 |
-| `{{$processEnv VAR}}` | Valore della variabile d'ambiente di sistema |
+| `{{$guid}}` | Random UUID v4 |
+| `{{$timestamp}}` | Unix timestamp in seconds |
+| `{{$randomInt}}` | Random integer 0–999 |
+| `{{$processEnv VAR}}` | Value of a system environment variable |
 
 ---
 
-## 7. Release — pubblicare l'estensione
+## 7. Release — publishing the extension
 
-Quando l'estensione è stabile e vuoi renderla disponibile a tutti gli utenti Zed:
+When the extension is stable and you want to make it available to all Zed users:
 
-### 7.1 Prepara il repository
+### 7.1 Prepare the repository
 
 ```bash
 cd ~/Code/zed-plugin/rest
@@ -224,36 +224,36 @@ git add .
 git commit -m "feat: initial release"
 ```
 
-Crea un repository pubblico su GitHub (es. `github.com/albz/zed-rest-client`) e fai push:
+Create a public repository on GitHub (e.g. `github.com/albz/zed-rest-client`) and push:
 
 ```bash
 git remote add origin https://github.com/albz/zed-rest-client.git
 git push -u origin main
 ```
 
-Aggiorna `extension.toml` con il tuo repository reale:
+Update `extension.toml` with your actual repository:
 
 ```toml
 repository = "https://github.com/albz/zed-rest-client"
 ```
 
-### 7.2 Fai il fork del registry Zed
+### 7.2 Fork the Zed registry
 
-Il registry delle estensioni Zed è un repository GitHub pubblico:
+The Zed extension registry is a public GitHub repository:
 ```
 https://github.com/zed-industries/extensions
 ```
 
-Fai fork, poi clona il tuo fork:
+Fork it, then clone your fork:
 
 ```bash
-git clone https://github.com/TUO_USERNAME/extensions
+git clone https://github.com/YOUR_USERNAME/extensions
 cd extensions
 ```
 
-### 7.3 Aggiungi la tua estensione
+### 7.3 Add your extension
 
-Nel file `extensions.toml` del registry, aggiungi:
+In the registry's `extensions.toml` file, add:
 
 ```toml
 [rest-client]
@@ -261,7 +261,7 @@ submodule = "extensions/rest-client"
 version = "0.1.0"
 ```
 
-Aggiungi il tuo repo come submodule:
+Add your repo as a submodule:
 
 ```bash
 git submodule add https://github.com/albz/zed-rest-client extensions/rest-client
@@ -270,28 +270,28 @@ git commit -m "Add rest-client extension"
 git push
 ```
 
-### 7.4 Apri una Pull Request
+### 7.4 Open a Pull Request
 
-Vai sul tuo fork su GitHub e apri una PR verso `zed-industries/extensions`. Il team Zed rivede e approva le PR solitamente in pochi giorni. Una volta mergiata, l'estensione appare nel marketplace di Zed per tutti gli utenti.
+Go to your fork on GitHub and open a PR toward `zed-industries/extensions`. The Zed team typically reviews and approves PRs within a few days. Once merged, the extension appears in the Zed marketplace for all users.
 
 ---
 
-## 8. Aggiornamenti futuri
+## 8. Future updates
 
-Per aggiornare una versione già pubblicata:
+To update an already-published version:
 
-1. Bumpa la versione in `extension.toml` (es. `0.1.0` → `0.2.0`)
-2. Fai commit e push del tuo repository
-3. Aggiorna il submodule nel fork del registry e apri una nuova PR
+1. Bump the version in `extension.toml` (e.g. `0.1.0` → `0.2.0`)
+2. Commit and push your repository
+3. Update the submodule in the registry fork and open a new PR
 
 ---
 
 ## Troubleshooting
 
-| Problema | Soluzione |
+| Problem | Solution |
 |---|---|
-| `rest-runner: command not found` | `~/.cargo/bin` non è nel PATH — aggiungi `export PATH="$HOME/.cargo/bin:$PATH"` al tuo `.zshrc` |
-| Nessun syntax highlighting | Ricarica l'estensione da dev: Extensions → tasto destro → Reload |
-| La grammatica TreeSitter non si scarica | Controlla la connessione. Zed scarica da GitHub al primo caricamento |
-| Errore SSL / certificati | Prova `rest-runner test.rest --verbose` nel terminale per vedere l'errore completo |
-| Richiesta va in timeout | Default 30s. Puoi modificare `executor.rs` → `.timeout(Duration::from_secs(60))` |
+| `rest-runner: command not found` | `~/.cargo/bin` is not in PATH — add `export PATH="$HOME/.cargo/bin:$PATH"` to your `.zshrc` |
+| No syntax highlighting | Reload the dev extension: Extensions → right-click → Reload |
+| TreeSitter grammar won't download | Check your connection. Zed downloads from GitHub on first load |
+| SSL / certificate error | Try `rest-runner test.rest --verbose` in the terminal to see the full error |
+| Request times out | Default is 30s. Pass `--timeout 120` or add it to your task args in `tasks.json` |

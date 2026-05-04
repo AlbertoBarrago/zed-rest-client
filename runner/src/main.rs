@@ -86,6 +86,8 @@ fn main() {
     let vars = env::load(&env_file, args.env.as_deref());
     let request = parser::substitute_vars(request, &vars);
 
+    output::print_request_header(&request);
+
     match executor::execute(&request, args.verbose, args.timeout) {
         Ok(response) => {
             // Cache the response by name so subsequent requests can chain on it.

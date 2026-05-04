@@ -3,6 +3,34 @@ use std::path::Path;
 use colored::Colorize;
 
 use crate::executor::Response;
+use crate::parser::Request;
+
+/// Prints a clear header before the response so the user knows exactly what ran.
+///
+/// Example output:
+///   ▶  Create a post
+///      POST  https://api.example.com/posts
+///   ──────────────────────────────────────
+pub fn print_request_header(request: &Request) {
+    let method_colored = match request.method.as_str() {
+        "GET"    => request.method.green().bold(),
+        "POST"   => request.method.yellow().bold(),
+        "PUT"    => request.method.blue().bold(),
+        "PATCH"  => request.method.cyan().bold(),
+        "DELETE" => request.method.red().bold(),
+        _        => request.method.white().bold(),
+    };
+
+    if let Some(name) = &request.name {
+        println!("{}  {}", "▶".bright_white().bold(), name.bold());
+        println!("   {}  {}", method_colored, request.url.dimmed());
+    } else {
+        println!("{}  {}  {}", "▶".bright_white().bold(), method_colored, request.url);
+    }
+
+    println!("{}", "─".repeat(52).dimmed());
+    println!();
+}
 
 pub fn print_response(response: &Response) {
     // Status line
