@@ -1,0 +1,14 @@
+# Zed generates this folder when loading the dev extension.
+# It contains the downloaded tree-sitter grammar source and compiled .wasm.
+# Zed rebuilds it automatically on every machine — never commit it.
+grammars/
+
+# Rust build artifacts
+runner/target/
+
+# macOS metadata
+.DS_Store
+
+# Environment files often contain secrets (tokens, passwords).
+# Commit a .rest-client.env.json.example instead and keep the real one local.
+.rest-client.env.json
