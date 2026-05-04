@@ -4,7 +4,11 @@
 grammars/
 
 # Rust build artifacts
+target/
 runner/target/
+
+# Zed dev extension build output
+extension.wasm
 
 # macOS metadata
 .DS_Store
@@ -12,3 +16,7 @@ runner/target/
 # Environment files often contain secrets (tokens, passwords).
 # Commit a .rest-client.env.json.example instead and keep the real one local.
 .rest-client.env.json
+
+# Local test files — not committed
+*.rest
+*.http

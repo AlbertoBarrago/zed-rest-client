@@ -5,12 +5,6 @@ use colored::Colorize;
 use crate::executor::Response;
 use crate::parser::Request;
 
-/// Prints a clear header before the response so the user knows exactly what ran.
-///
-/// Example output:
-///   ▶  Create a post
-///      POST  https://api.example.com/posts
-///   ──────────────────────────────────────
 pub fn print_request_header(request: &Request) {
     let method_colored = match request.method.as_str() {
         "GET"    => request.method.green().bold(),
@@ -21,19 +15,16 @@ pub fn print_request_header(request: &Request) {
         _        => request.method.white().bold(),
     };
 
+    println!("{}", "REST Client".bright_white().bold());
     if let Some(name) = &request.name {
-        println!("{}  {}", "▶".bright_white().bold(), name.bold());
-        println!("   {}  {}", method_colored, request.url.dimmed());
+        println!("{} {}", "Request".dimmed(), name.bold());
+        println!("{} {} {}", "Target ".dimmed(), method_colored, request.url);
     } else {
-        println!("{}  {}  {}", "▶".bright_white().bold(), method_colored, request.url);
+        println!("{} {} {}", "Target ".dimmed(), method_colored, request.url);
     }
-
-    println!("{}", "─".repeat(52).dimmed());
-    println!();
 }
 
-pub fn print_response(response: &Response) {
-    // Status line
+pub fn print_response(response: &Response, show_headers: bool) {
     let status_str = format!("{} {}", response.status, response.status_text);
     let status_colored = match response.status {
         200..=299 => status_str.green().bold(),
@@ -41,33 +32,35 @@ pub fn print_response(response: &Response) {
         400..=499 => status_str.red().bold(),
         _ => status_str.red().bold(),
     };
-    println!("{} {}", "HTTP/1.1".dimmed(), status_colored);
-    println!();
 
-    // Response headers
-    for (name, value) in &response.headers {
-        println!("{}: {}", name.cyan(), value);
-    }
-    println!();
-
-    // Body
-    println!("{}", pretty_body(&response.body, &response.headers));
-    println!();
-
-    // Summary bar
-    let bar = "─".repeat(52);
-    println!("{}", bar.dimmed());
-    let summary_status = match response.status {
-        200..=299 => status_str_short(response).green(),
-        300..=399 => status_str_short(response).yellow(),
-        _ => status_str_short(response).red(),
-    };
     println!(
-        "{}  {}  {}",
-        summary_status,
-        format!("{}ms", response.duration_ms).yellow(),
-        format!("{} bytes", response.size_bytes).cyan(),
+        "{} {}  {}  {}  {}",
+        "Status ".dimmed(),
+        status_colored,
+        format_duration(response.duration_ms).yellow(),
+        format_size(response.size_bytes).cyan(),
+        content_type(response.headers.as_slice()).dimmed(),
     );
+    println!("{}", "─".repeat(80).dimmed());
+
+    if show_headers {
+        println!("{}", "Headers".bright_white().bold());
+        for (name, value) in &response.headers {
+            println!("{}: {}", name.cyan(), value);
+        }
+        println!("{}", "─".repeat(80).dimmed());
+    }
+
+    println!("{}", "Body".bright_white().bold());
+    print!("{}", body_preview(&response.body, &response.headers));
+    println!();
+
+    if !show_headers {
+        println!(
+            "{}",
+            "Tip: pass --headers to show response headers.".dimmed()
+        );
+    }
 }
 
 /// Write the response to `path`. With `include_headers`, prepends the status
@@ -91,10 +84,6 @@ pub fn save_to_file(response: &Response, path: &Path, include_headers: bool) {
     }
 }
 
-fn status_str_short(r: &Response) -> String {
-    format!("{} {}", r.status, r.status_text)
-}
-
 fn pretty_body(body: &str, headers: &[(String, String)]) -> String {
     let content_type = headers
         .iter()
@@ -108,4 +97,39 @@ fn pretty_body(body: &str, headers: &[(String, String)]) -> String {
         }
     }
     body.to_string()
+}
+
+fn body_preview(body: &str, headers: &[(String, String)]) -> String {
+    let pretty = pretty_body(body, headers);
+    if pretty.ends_with('\n') {
+        pretty
+    } else {
+        format!("{}\n", pretty)
+    }
+}
+
+fn content_type(headers: &[(String, String)]) -> &str {
+    headers
+        .iter()
+        .find(|(name, _)| name.eq_ignore_ascii_case("content-type"))
+        .map(|(_, value)| value.as_str())
+        .unwrap_or("unknown content-type")
+}
+
+fn format_duration(ms: u64) -> String {
+    if ms < 1_000 {
+        format!("{}ms", ms)
+    } else {
+        format!("{:.2}s", ms as f64 / 1_000.0)
+    }
+}
+
+fn format_size(bytes: usize) -> String {
+    if bytes < 1_024 {
+        format!("{} B", bytes)
+    } else if bytes < 1_024 * 1_024 {
+        format!("{:.1} KB", bytes as f64 / 1_024.0)
+    } else {
+        format!("{:.1} MB", bytes as f64 / (1_024.0 * 1_024.0))
+    }
 }

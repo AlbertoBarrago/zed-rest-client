@@ -8,4 +8,4 @@ repository = "https://github.com/albz/zed-rest-client"
 
 [grammars.http]
 repository = "https://github.com/rest-nvim/tree-sitter-http"
-commit = "db8b4398de90b6d0b6c780aba96aaa2cd8e9202c"
+rev = "db8b4398de90b6d0b6c780aba96aaa2cd8e9202c"

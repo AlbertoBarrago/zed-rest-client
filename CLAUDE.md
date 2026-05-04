@@ -23,7 +23,7 @@ cargo build
 cargo install --path .
 
 # Run directly (useful for manual testing)
-cargo run -- ../../test.rest --line 1
+cargo run -- ../../test.rest --method GET --url https://example.com
 cargo run -- ../../test.rest --name "Get a single user" --verbose
 cargo run -- ../../test.rest --env prod --timeout 60
 
@@ -43,7 +43,7 @@ main.rs  →  parser.rs  →  executor.rs  →  output.rs
             jsonpath.rs (chaining resolution)
 ```
 
-**`parser.rs`** — Splits the file on `###` boundaries into sections, then parses each section into a `Request` struct. `section_line` (1-based line of the `###`) is used for cursor-based lookup, not the HTTP method line. Variable substitution (`{{expr}}`) happens here after parsing; it calls into `cache` and `jsonpath` to resolve chained expressions.
+**`parser.rs`** — Splits the file on `###` boundaries into sections, then parses each section into a `Request` struct. Zed runnable queries pass the captured method and URL to the runner, which selects the matching parsed request. Variable substitution (`{{expr}}`) happens after selection; it calls into `cache` and `jsonpath` to resolve chained expressions.
 
 **`executor.rs`** — Builds a `reqwest::blocking` request from the parsed `Request` and fires it. Auto-sets `Content-Type: application/json` if the body starts with `{` and no content-type header is present.
 
@@ -55,10 +55,9 @@ main.rs  →  parser.rs  →  executor.rs  →  output.rs
 
 ## Key design decisions
 
-- `section_line` vs method line: `find_at_line` uses the `###` separator line so the cursor can be anywhere in the block (separator, comments, headers, body) and still hit the right request.
 - `grammars/` is gitignored — Zed generates it on first load by cloning the tree-sitter grammar repo. Never commit it.
 - `runner/Cargo.lock` is committed (binary crate convention).
-- The Zed task passes `$ZED_FILE` and `$ZED_ROW` as arguments; `--line` receives `$ZED_ROW` and `find_at_line` resolves the correct request.
+- The Zed task is bound to the `rest-request` runnable tag and passes `$ZED_CUSTOM_METHOD` / `$ZED_CUSTOM_URL`; it does not depend on cursor row detection.
 
 ## Zed extension loading
 

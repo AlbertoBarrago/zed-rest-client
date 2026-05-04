@@ -9,8 +9,6 @@ pub struct Request {
     pub url: String,
     pub headers: Vec<(String, String)>,
     pub body: Option<String>,
-    /// 1-based line of the `###` separator that opens this section (or line 1 for the first section).
-    pub section_line: usize,
 }
 
 pub fn parse(content: &str) -> Vec<Request> {
@@ -108,7 +106,11 @@ fn parse_section(lines: &[&str], start: usize, end: usize) -> Option<Request> {
     let body = if i < end {
         let raw = lines[i..end].join("\n");
         let trimmed = raw.trim().to_string();
-        if trimmed.is_empty() { None } else { Some(trimmed) }
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed)
+        }
     } else {
         None
     };
@@ -119,14 +121,23 @@ fn parse_section(lines: &[&str], start: usize, end: usize) -> Option<Request> {
         url,
         headers,
         body,
-        section_line: start + 1, // 1-based: the ### line (or line 1 for the implicit first section)
     })
 }
 
 fn parse_request_line(line: &str) -> Option<(String, String)> {
     const METHODS: &[&str] = &[
-        "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD",
-        "OPTIONS", "CONNECT", "TRACE", "LIST",
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "PATCH",
+        "HEAD",
+        "OPTIONS",
+        "CONNECT",
+        "TRACE",
+        "LIST",
+        "GRAPHQL",
+        "WEBSOCKET",
     ];
     let mut parts = line.splitn(3, ' ');
     let method = parts.next()?.trim().to_uppercase();
@@ -141,11 +152,122 @@ fn parse_request_line(line: &str) -> Option<(String, String)> {
     Some((method, url))
 }
 
-/// Returns the request whose section contains `line` (1-based).
-/// Matches from the `###` separator all the way to the next one, so the
-/// cursor can be anywhere in the block — on the separator, comments, headers, or body.
-pub fn find_at_line(requests: &[Request], line: usize) -> Option<&Request> {
-    requests.iter().rev().find(|r| r.section_line <= line)
+pub fn find_by_signature<'a>(
+    requests: &'a [Request],
+    method: &str,
+    url: &str,
+) -> Option<&'a Request> {
+    let method = method.trim().to_uppercase();
+    let url = url.trim();
+    requests
+        .iter()
+        .find(|r| r.method == method && normalize_url(&r.url) == normalize_url(url))
+}
+
+fn normalize_url(url: &str) -> String {
+    url.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join("")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn req(method: &str, url: &str) -> Request {
+        Request {
+            name: None,
+            method: method.into(),
+            url: url.into(),
+            headers: vec![],
+            body: None,
+        }
+    }
+
+    #[test]
+    fn find_by_method_and_url() {
+        let reqs = vec![req("GET", "https://a.com"), req("POST", "https://b.com")];
+        assert_eq!(
+            find_by_signature(&reqs, "post", "https://b.com")
+                .unwrap()
+                .url,
+            "https://b.com"
+        );
+    }
+
+    #[test]
+    fn find_by_signature_normalizes_wrapped_urls() {
+        let reqs = vec![req("GET", "https://example.com/\n  users")];
+        assert!(find_by_signature(&reqs, "GET", "https://example.com/users").is_some());
+    }
+
+    #[test]
+    fn find_by_signature_returns_none_for_empty_list() {
+        assert!(find_by_signature(&[], "GET", "https://x.com").is_none());
+    }
+
+    // ── parse ────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn parse_single_request_no_separator() {
+        let src = "GET https://example.com\n";
+        let reqs = parse(src);
+        assert_eq!(reqs.len(), 1);
+        assert_eq!(reqs[0].method, "GET");
+        assert_eq!(reqs[0].url, "https://example.com");
+    }
+
+    #[test]
+    fn parse_two_named_sections() {
+        // 0: ### First
+        // 1: GET https://a.com
+        // 2: (blank)
+        // 3: ### Second
+        // 4: POST https://b.com
+        let src = "### First\nGET https://a.com\n\n### Second\nPOST https://b.com\n";
+        let reqs = parse(src);
+        assert_eq!(reqs.len(), 2);
+        assert_eq!(reqs[0].name.as_deref(), Some("First"));
+        assert_eq!(reqs[1].name.as_deref(), Some("Second"));
+    }
+
+    #[test]
+    fn parse_empty_separator_is_skipped() {
+        // A bare `###` with no method should not produce a request.
+        let src = "GET https://a.com\n\n###\n\n### Real\nDELETE https://b.com\n";
+        let reqs = parse(src);
+        assert_eq!(reqs.len(), 2);
+        assert_eq!(reqs[1].method, "DELETE");
+    }
+
+    #[test]
+    fn parse_name_from_at_name_comment() {
+        let src = "### \n# @name myReq\nGET https://x.com\n";
+        let reqs = parse(src);
+        assert_eq!(reqs[0].name.as_deref(), Some("myReq"));
+    }
+
+    #[test]
+    fn parse_headers_and_body() {
+        let src = "### T\nPOST https://x.com\nContent-Type: application/json\n\n{\"k\":1}\n";
+        let reqs = parse(src);
+        assert_eq!(
+            reqs[0].headers,
+            vec![("Content-Type".into(), "application/json".into())]
+        );
+        assert_eq!(reqs[0].body.as_deref(), Some("{\"k\":1}"));
+    }
+
+    #[test]
+    fn parse_graphql_and_websocket_methods() {
+        let src =
+            "GRAPHQL https://api.example.com/graphql\n\n### WS\nWEBSOCKET ws://localhost:3000\n";
+        let reqs = parse(src);
+        assert_eq!(reqs[0].method, "GRAPHQL");
+        assert_eq!(reqs[1].method, "WEBSOCKET");
+    }
 }
 
 pub fn substitute_vars(mut req: Request, vars: &HashMap<String, String>) -> Request {

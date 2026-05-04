@@ -18,6 +18,7 @@ Inspired by the [VS Code REST Client](https://github.com/Huachao/vscode-restclie
 - **Response chaining** — use values from a previous response in the next request
 - **Save to file** — write the response body (or full response) to a file with `--output`
 - **Configurable timeout** — set per-request timeout with `--timeout`
+- **Gutter run buttons** — click the play icon next to a request line to execute it
 - Colored, pretty-printed output in the integrated terminal
 
 ---
@@ -28,45 +29,63 @@ Inspired by the [VS Code REST Client](https://github.com/Huachao/vscode-restclie
 
 Open Zed → **Extensions** (`Cmd+Shift+X`) → search for **REST Client** → **Install**.
 
+For local development, use **Install Dev Extension...** and select this repository root:
+
+```bash
+/Users/albz/Code/zed-plugin
+```
+
 ### 2. Install the CLI runner
 
 The extension provides syntax highlighting out of the box. To **execute** requests you also need the `rest-runner` CLI:
 
 ```bash
-cd rest
+cd /Users/albz/Code/zed-plugin
 cargo install --path runner
 ```
 
 > Don't have Rust? Install it first: https://rustup.rs
 
-### 3. Register the run task
+### 3. Run requests from the gutter
 
-Add the following to `~/.config/zed/tasks.json` (create the file if it doesn't exist):
+The extension provides a runnable task for HTTP requests. Zed shows a play button next to request lines and runs `rest-runner` with the captured method and URL.
+
+To override the default task, add a tagged task to `~/.config/zed/tasks.json`:
 
 ```json
 [
   {
-    "label": "REST: Run Request at Cursor",
+    "label": "REST: Run Request",
     "command": "rest-runner",
-    "args": ["$ZED_FILE", "--line", "$ZED_ROW"],
+    "args": ["$ZED_FILE", "--method", "$ZED_CUSTOM_METHOD", "--url", "$ZED_CUSTOM_URL"],
+    "tags": ["rest-request"],
     "reveal": "always"
   }
 ]
 ```
 
-### 4. (Optional) Add a keyboard shortcut
+### 4. Rebuild and reload during development
 
-In `~/.config/zed/keymap.json`:
+After changing `runner/`, reinstall the CLI:
 
-```json
-[
-  {
-    "context": "Editor",
-    "bindings": {
-      "ctrl-alt-r": ["task::Spawn", { "task_name": "REST: Run Request at Cursor" }]
-    }
-  }
-]
+```bash
+cd /Users/albz/Code/zed-plugin
+cargo install --path runner
+```
+
+After changing `languages/`, `extension.toml`, `README.md`, or `GUIDE.md`, reload the dev extension in Zed:
+
+1. Open **Extensions** (`Cmd+Shift+X`)
+2. Find **REST Client**
+3. Right-click → **Reload**
+
+The extension itself is a language extension, so there is no manual plugin build step in this repo. Zed loads the extension metadata and queries, and downloads/builds the Tree-sitter grammar on first load. The executable part is the `rest-runner` CLI installed by Cargo.
+
+To verify the installed CLI:
+
+```bash
+which rest-runner
+rest-runner --help
 ```
 
 ---
@@ -99,10 +118,9 @@ Content-Type: application/json
 
 ### Running a request
 
-Place your cursor anywhere inside the request you want to run, then:
+Click the play icon that Zed shows next to the request line, or open code actions on that line and select `REST: Run Request`.
 
-- **Command palette** (`Cmd+Shift+P`) → `task: spawn` → `REST: Run Request at Cursor`
-- Or use your keyboard shortcut if you configured one
+The runnable task receives the request method and URL from Tree-sitter captures, so it does not depend on cursor row detection.
 
 The integrated terminal opens and shows the full response:
 
@@ -280,16 +298,16 @@ Create a `.rest-client.env.json` file in the same directory as your `.rest` file
 }
 ```
 
-By default, the `local` environment is used. To switch environment, edit your task args:
+By default, the `local` environment is used. To switch environment, override the tagged task args:
 
 ```json
-"args": ["$ZED_FILE", "--line", "$ZED_ROW", "--env", "staging"]
+"args": ["$ZED_FILE", "--method", "$ZED_CUSTOM_METHOD", "--url", "$ZED_CUSTOM_URL", "--env", "staging"]
 ```
 
 Or call the CLI directly:
 
 ```bash
-rest-runner api.rest --line 12 --env prod
+rest-runner api.rest --name "Create user" --env prod
 ```
 
 ---
@@ -303,7 +321,9 @@ Arguments:
   <FILE>  Path to the .rest or .http file
 
 Options:
-  -l, --line <LINE>          Line number of the request to run (1-based)
+      --method <METHOD>      HTTP method of the request to run
+      --url <URL>            URL of the request to run
+  -l, --line <LINE>          Deprecated; retained for old task configs
   -n, --name <NAME>          Name of the request to run
   -e, --env <ENV>            Environment name (from .rest-client.env.json)
       --env-file <ENV_FILE>  Path to a custom env file

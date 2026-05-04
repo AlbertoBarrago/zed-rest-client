@@ -19,7 +19,15 @@ struct Args {
     /// Path to the .rest or .http file
     file: PathBuf,
 
-    /// Line number of the request to execute (1-based). Defaults to first request.
+    /// HTTP method of the request to execute. Used with --url by Zed runnables.
+    #[arg(long)]
+    method: Option<String>,
+
+    /// URL of the request to execute. Used with --method by Zed runnables.
+    #[arg(long)]
+    url: Option<String>,
+
+    /// Line number of the request to execute. Deprecated; defaults to first request.
     #[arg(long, short)]
     line: Option<usize>,
 
@@ -47,6 +55,10 @@ struct Args {
     #[arg(long, requires = "output")]
     output_headers: bool,
 
+    /// Print response headers in the terminal output
+    #[arg(long)]
+    headers: bool,
+
     /// Print request headers before sending
     #[arg(long, short)]
     verbose: bool,
@@ -54,6 +66,10 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
+    if args.method.is_some() != args.url.is_some() {
+        eprintln!("error: --method and --url must be provided together");
+        std::process::exit(1);
+    }
 
     let content = std::fs::read_to_string(&args.file).unwrap_or_else(|e| {
         eprintln!("error: cannot read {}: {}", args.file.display(), e);
@@ -67,7 +83,13 @@ fn main() {
         std::process::exit(1);
     }
 
-    let request = select_request(&requests, args.line, args.name.as_deref());
+    let request = select_request(
+        &requests,
+        args.method.as_deref(),
+        args.url.as_deref(),
+        args.name.as_deref(),
+        args.line,
+    );
     let request = match request {
         Some(r) => r.clone(),
         None => {
@@ -109,7 +131,7 @@ fn main() {
             if let Some(path) = args.output {
                 output::save_to_file(&response, &path, args.output_headers);
             }
-            output::print_response(&response);
+            output::print_response(&response, args.headers);
         }
         Err(e) => {
             eprintln!("error: request failed: {}", e);
@@ -120,14 +142,19 @@ fn main() {
 
 fn select_request<'a>(
     requests: &'a [parser::Request],
-    line: Option<usize>,
+    method: Option<&str>,
+    url: Option<&str>,
     name: Option<&str>,
+    line: Option<usize>,
 ) -> Option<&'a parser::Request> {
-    if let Some(line) = line {
-        return parser::find_at_line(requests, line);
+    if let (Some(method), Some(url)) = (method, url) {
+        return parser::find_by_signature(requests, method, url);
     }
     if let Some(name) = name {
         return requests.iter().find(|r| r.name.as_deref() == Some(name));
+    }
+    if line.is_some() {
+        eprintln!("warning: --line is deprecated; running the first request instead");
     }
     requests.first()
 }

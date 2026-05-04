@@ -1,0 +1,8 @@
+[
+  {
+    "label": "REST: Run Request",
+    "command": "rest-runner \"$ZED_FILE\" --method \"${ZED_CUSTOM_METHOD:-$ZED_CUSTOM_method}\" --url \"${ZED_CUSTOM_URL:-$ZED_CUSTOM_url}\"",
+    "tags": ["rest-request"],
+    "reveal": "always"
+  }
+]

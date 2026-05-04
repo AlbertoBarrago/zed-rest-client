@@ -5,20 +5,20 @@
 ```
 rest/
 ├── extension.toml          # Zed extension manifest
-├── Cargo.toml              # Rust workspace
 ├── languages/
 │   └── http/
 │       ├── config.toml     # .rest / .http file associations
-│       └── highlights.scm  # syntax highlighting
-└── crates/
-    └── rest-runner/        # CLI binary that executes requests
-        ├── Cargo.toml
-        └── src/
-            ├── main.rs
-            ├── parser.rs   # .rest file parser
-            ├── executor.rs # HTTP client (reqwest)
-            ├── env.rs      # environment variable loading
-            └── output.rs   # colored terminal output
+│       ├── highlights.scm  # syntax highlighting
+│       ├── runnables.scm   # gutter play button detection
+│       └── tasks.json      # default task bound to runnable tags
+└── runner/                 # CLI binary that executes requests
+    ├── Cargo.toml
+    └── src/
+        ├── main.rs
+        ├── parser.rs       # .rest file parser
+        ├── executor.rs     # HTTP client (reqwest)
+        ├── env.rs          # environment variable loading
+        └── output.rs       # colored terminal output
 ```
 
 ---
@@ -46,7 +46,7 @@ cargo --version   # e.g. cargo 1.78.0
 The `rest-runner` CLI is the binary Zed will call to execute HTTP requests.
 
 ```bash
-cd ~/Code/zed-plugin/rest
+cd /Users/albz/Code/zed-plugin
 cargo install --path runner
 ```
 
@@ -65,55 +65,51 @@ rest-runner --help
 1. Open **Zed**
 2. Go to **Extensions** (puzzle icon bottom-left, or `Cmd+Shift+X`)
 3. Click **Install Dev Extension…**
-4. Select the folder `~/Code/zed-plugin/rest`
+4. Select the folder `/Users/albz/Code/zed-plugin`
 5. Zed automatically downloads the TreeSitter grammar from GitHub and compiles the language support
 
 From this point on, all `.rest` and `.http` files are recognized with syntax highlighting.
 
 ---
 
-## 4. Add the "Run Request" task
+## 4. Run task and gutter play button
 
-Open (or create) `~/.config/zed/tasks.json` and add:
+The extension ships `languages/http/tasks.json`, which binds the `rest-request` runnable tag to `rest-runner`. Zed should show a play button beside every parsed HTTP request line.
+
+You only need `~/.config/zed/tasks.json` if you want to override the default task. For example:
 
 ```json
 [
   {
-    "label": "REST: Run Request at Cursor",
+    "label": "REST: Run Request",
     "command": "rest-runner",
-    "args": ["$ZED_FILE", "--line", "$ZED_ROW"],
+    "args": ["$ZED_FILE", "--method", "$ZED_CUSTOM_METHOD", "--url", "$ZED_CUSTOM_URL"],
+    "tags": ["rest-request"],
     "reveal": "always"
   }
 ]
 ```
 
-### Optional keybinding
+Use the gutter play button or Zed's code actions on the request line. The task depends on `ZED_CUSTOM_METHOD` and `ZED_CUSTOM_URL`, which come from the runnable capture, so spawning the task globally is not the intended path.
 
-In `~/.config/zed/keymap.json` add:
+---
 
-```json
-[
-  {
-    "context": "Editor",
-    "bindings": {
-      "ctrl-alt-r": "task::Spawn"
-    }
-  }
-]
+## 4.1 Rebuild and reload during development
+
+After changing the runner:
+
+```bash
+cd /Users/albz/Code/zed-plugin
+cargo install --path runner
 ```
 
-Or, to run the REST task directly without going through the menu:
+After changing extension metadata or language files:
 
-```json
-[
-  {
-    "context": "Editor && extension == rest || extension == http",
-    "bindings": {
-      "ctrl-alt-r": ["task::Spawn", { "task_name": "REST: Run Request at Cursor" }]
-    }
-  }
-]
-```
+1. Open **Extensions** in Zed (`Cmd+Shift+X`)
+2. Find **REST Client**
+3. Right-click → **Reload**
+
+There is no separate manual build command for the language extension in this repo. Zed reads `extension.toml`, `languages/http/*.scm`, and `languages/http/tasks.json`, then downloads/builds the Tree-sitter grammar when the dev extension loads. The only binary you compile manually is `rest-runner`.
 
 ---
 
@@ -144,8 +140,9 @@ GET {{baseUrl}}/users/{{userId}}
 Authorization: Bearer {{token}}
 ```
 
-To run the request at the cursor position:
-- Command palette (`Cmd+Shift+P`) → search `task: spawn` → select `REST: Run Request at Cursor`
+To run the request:
+- Click the gutter play button beside the request line
+- Or trigger Zed code actions on the request line and select `REST: Run Request`
 
 The integrated terminal opens and shows:
 
@@ -189,14 +186,14 @@ Create a `.rest-client.env.json` file in the same folder as your `.rest` file:
 To use a specific environment, add the `--env` flag:
 
 ```json
-"args": ["$ZED_FILE", "--line", "$ZED_ROW", "--env", "local"]
+"args": ["$ZED_FILE", "--method", "$ZED_CUSTOM_METHOD", "--url", "$ZED_CUSTOM_URL", "--env", "local"]
 ```
 
 Or call it manually from the terminal:
 
 ```bash
-rest-runner test.rest --line 15 --env prod
 rest-runner test.rest --name "Create a post"
+rest-runner test.rest --method GET --url https://jsonplaceholder.typicode.com/posts/1
 rest-runner test.rest --verbose   # also shows request headers
 ```
 
@@ -218,7 +215,7 @@ When the extension is stable and you want to make it available to all Zed users:
 ### 7.1 Prepare the repository
 
 ```bash
-cd ~/Code/zed-plugin/rest
+cd /Users/albz/Code/zed-plugin
 git init
 git add .
 git commit -m "feat: initial release"
