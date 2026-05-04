@@ -1,6 +1,6 @@
 # REST Client for Zed
 
-A HTTP client extension for [Zed](https://zed.dev) that lets you write, run, and inspect HTTP requests directly inside the editor — no browser, no external app.
+A HTTP client extension for [Zed](https://zed.dev) that lets you write, run, and inspect HTTP requests directly inside the editor. No browser, no external app.
 
 Inspired by the [VS Code REST Client](https://github.com/Huachao/vscode-restclient) extension.
 
