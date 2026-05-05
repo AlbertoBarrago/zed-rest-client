@@ -1,3 +1,0 @@
-[submodule "extensions/rest-client"]
-	path = extensions/rest-client
-	url = https://github.com/AlbertoBarrago/zed-rest-client.git
