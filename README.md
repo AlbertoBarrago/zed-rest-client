@@ -73,7 +73,7 @@ cd /Users/albz/Code/zed-plugin
 cargo install --path runner
 ```
 
-After changing `languages/`, `extension.toml`, `README.md`, or `GUIDE.md`, reload the dev extension in Zed:
+After changing `languages/`, `extension.toml`, or `README.md`, reload the dev extension in Zed:
 
 1. Open **Extensions** (`Cmd+Shift+X`)
 2. Find **REST Client**

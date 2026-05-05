@@ -19,7 +19,6 @@ Thank you for considering a contribution! This project is split into two indepen
 │       ├── cache.rs
 │       └── jsonpath.rs
 ├── README.md
-├── GUIDE.md
 └── CONTRIBUTING.md         # this file
 ```
 
@@ -66,7 +65,7 @@ cargo run -- ../test.rest --method GET --url https://httpbin.org/get
 1. **Open an issue first** for bug reports or feature proposals so we can discuss the approach.
 2. **Fork the repository** and create a feature branch.
 3. **Keep commits atomic** — one logical change per commit.
-4. **Update documentation** if your change affects usage (`README.md`, `GUIDE.md`, or inline `--help` text).
+4. **Update documentation** if your change affects usage (`README.md` or inline `--help` text).
 5. **Ensure the CLI builds cleanly:**
    ```bash
    cd runner
