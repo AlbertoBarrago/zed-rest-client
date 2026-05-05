@@ -3,7 +3,7 @@ name = "REST Client"
 description = "HTTP .rest and .http file support with syntax highlighting"
 version = "0.1.1"
 schema_version = 1
-authors = ["Alberto Barrago <alberto.barrago@google.com>"]
+authors = ["Alberto Barrago <albertobarrago@gmail.com>"]
 repository = "https://github.com/AlbertoBarrago/zed-rest-client"
 
 [grammars.http]
