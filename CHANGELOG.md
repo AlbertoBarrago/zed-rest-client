@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] - 2025-01-09
+### Added
+
+- File-level variable declarations (`@name = value`) with substitution in request URLs, headers, and bodies.
+- File-level variables override values with the same name from `.rest-client.env.json`.
+
+## [0.1.1] - 2026-05-05
+
+### Fixed
+
+- Corrected the extension author email and aligned the extension and runner versions.
+
+## [0.1.0] - 2026-05-04
 
 ### Added
 
@@ -25,5 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configurable per-request timeout via `--timeout`.
 - Verbose mode (`--verbose`) to print request headers before sending.
 
-[unreleased]: https://github.com/AlbertoBarrago/zed-rest-client/compare/v0.1.0...HEAD
+[unreleased]: https://github.com/AlbertoBarrago/zed-rest-client/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/AlbertoBarrago/zed-rest-client/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/AlbertoBarrago/zed-rest-client/releases/tag/v0.1.0

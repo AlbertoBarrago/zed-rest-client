@@ -36,6 +36,49 @@ pub fn parse(content: &str) -> Vec<Request> {
     requests
 }
 
+pub fn parse_variables(content: &str) -> HashMap<String, String> {
+    let mut variables = HashMap::new();
+    let mut before_request = true;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        if trimmed.starts_with("###") {
+            before_request = true;
+            continue;
+        }
+
+        if before_request && parse_request_line(trimmed).is_some() {
+            before_request = false;
+            continue;
+        }
+
+        if before_request {
+            if let Some((name, value)) = parse_variable_declaration(trimmed) {
+                variables.insert(name.to_string(), value.to_string());
+            }
+        }
+    }
+
+    variables
+}
+
+fn parse_variable_declaration(line: &str) -> Option<(&str, &str)> {
+    let declaration = line.strip_prefix('@')?;
+    let (name, value) = declaration.split_once('=')?;
+    let name = name.trim();
+
+    if name.is_empty()
+        || !name
+            .chars()
+            .all(|character| character.is_alphanumeric() || "_.$-".contains(character))
+    {
+        return None;
+    }
+
+    Some((name, value.trim()))
+}
+
 fn parse_section(lines: &[&str], start: usize, end: usize) -> Option<Request> {
     let mut name: Option<String> = None;
     let mut i = start;
@@ -268,6 +311,52 @@ mod tests {
         assert_eq!(reqs[0].method, "GRAPHQL");
         assert_eq!(reqs[1].method, "WEBSOCKET");
     }
+
+    #[test]
+    fn parse_file_variables() {
+        let src = "@baseUrl = http://localhost:8000/api/v1\n@token = prefix=value\n\nGET {{baseUrl}}/health\n";
+        let variables = parse_variables(src);
+
+        assert_eq!(
+            variables.get("baseUrl").map(String::as_str),
+            Some("http://localhost:8000/api/v1")
+        );
+        assert_eq!(
+            variables.get("token").map(String::as_str),
+            Some("prefix=value")
+        );
+    }
+
+    #[test]
+    fn parse_variables_ignores_request_body() {
+        let src = "POST https://example.com\n\n@body = not-a-variable\n";
+
+        assert!(parse_variables(src).is_empty());
+    }
+
+    #[test]
+    fn substitute_file_variables_in_request() {
+        let request = Request {
+            name: None,
+            method: "POST".into(),
+            url: "{{baseUrl}}/health".into(),
+            headers: vec![("Authorization".into(), "Bearer {{token}}".into())],
+            body: Some("{\"url\":\"{{baseUrl}}\"}".into()),
+        };
+        let variables = HashMap::from([
+            ("baseUrl".into(), "http://localhost:8000/api/v1".into()),
+            ("token".into(), "secret".into()),
+        ]);
+
+        let request = substitute_vars(request, &variables);
+
+        assert_eq!(request.url, "http://localhost:8000/api/v1/health");
+        assert_eq!(request.headers[0].1, "Bearer secret");
+        assert_eq!(
+            request.body.as_deref(),
+            Some("{\"url\":\"http://localhost:8000/api/v1\"}")
+        );
+    }
 }
 
 pub fn substitute_vars(mut req: Request, vars: &HashMap<String, String>) -> Request {
@@ -327,7 +416,7 @@ fn resolve_var(expr: &str, vars: &HashMap<String, String>) -> String {
         return resolved;
     }
 
-    // User-defined variable from env file.
+    // User-defined variable from the request or env file.
     vars.get(expr)
         .cloned()
         .unwrap_or_else(|| format!("{{{{{}}}}}", expr))

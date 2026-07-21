@@ -27,20 +27,25 @@ Inspired by the [VS Code REST Client](https://github.com/Huachao/vscode-restclie
 
 ### 1. Install the Zed extension
 
-Open Zed → **Extensions** (`Cmd+Shift+X`) → search for **REST Client** → **Install**.
-
-For local development, use **Install Dev Extension...** and select this repository root:
+The extension is awaiting inclusion in the Zed extension registry in
+[zed-industries/extensions#5899](https://github.com/zed-industries/extensions/pull/5899).
+Until it is published, clone this repository and install it as a development
+extension:
 
 ```bash
-/Users/albz/Code/zed-plugin
+git clone https://github.com/AlbertoBarrago/zed-rest-client.git
+cd zed-rest-client
 ```
+
+In Zed, open **Extensions** (`Cmd+Shift+X`), select **Install Dev Extension...**,
+and choose the cloned `zed-rest-client` directory.
 
 ### 2. Install the CLI runner
 
 The extension provides syntax highlighting out of the box. To **execute** requests you also need the `rest-runner` CLI:
 
 ```bash
-cd /Users/albz/Code/zed-plugin
+cd zed-rest-client
 cargo install --path runner
 ```
 
@@ -69,7 +74,7 @@ To override the default task, add a tagged task to `~/.config/zed/tasks.json`:
 After changing `runner/`, reinstall the CLI:
 
 ```bash
-cd /Users/albz/Code/zed-plugin
+cd zed-rest-client
 cargo install --path runner
 ```
 
@@ -228,12 +233,20 @@ GET https://api.example.com/users
 
 ### User-defined variables
 
-Use `{{variableName}}` anywhere in the URL, headers, or body:
+Declare file-level variables with `@name = value`, then use `{{variableName}}`
+anywhere in the URL, headers, or body:
 
 ```http
+@baseUrl = http://localhost:8000/api/v1
+@userId = 42
+@token = dev-token
+
 GET {{baseUrl}}/users/{{userId}}
 Authorization: Bearer {{token}}
 ```
+
+File-level variables override variables with the same name loaded from
+`.rest-client.env.json`.
 
 ### Built-in variables
 

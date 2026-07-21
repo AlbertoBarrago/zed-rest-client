@@ -105,7 +105,8 @@ fn main() {
             .join(".rest-client.env.json")
     });
 
-    let vars = env::load(&env_file, args.env.as_deref());
+    let mut vars = env::load(&env_file, args.env.as_deref());
+    vars.extend(parser::parse_variables(&content));
     let request = parser::substitute_vars(request, &vars);
 
     output::print_request_header(&request);
