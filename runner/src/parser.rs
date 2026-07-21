@@ -182,17 +182,36 @@ fn parse_request_line(line: &str) -> Option<(String, String)> {
         "GRAPHQL",
         "WEBSOCKET",
     ];
-    let mut parts = line.splitn(3, ' ');
-    let method = parts.next()?.trim().to_uppercase();
+    let line = line.trim();
+    let method = line.split_whitespace().next()?.to_uppercase();
     if !METHODS.contains(&method.as_str()) {
         return None;
     }
-    let url = parts.next()?.trim().to_string();
+
+    let mut url = line[method.len()..].trim_start();
+    if let Some(version_start) = url.rfind(char::is_whitespace) {
+        let possible_version = url[version_start..].trim();
+        if is_http_version(possible_version) {
+            url = url[..version_start].trim_end();
+        }
+    }
+
     if url.is_empty() {
         return None;
     }
-    // Third part (HTTP/1.1) is intentionally ignored — reqwest handles protocol negotiation.
-    Some((method, url))
+
+    Some((method, url.to_string()))
+}
+
+fn is_http_version(value: &str) -> bool {
+    value
+        .strip_prefix("HTTP/")
+        .is_some_and(|version| {
+            !version.is_empty()
+                && version
+                    .chars()
+                    .all(|character| character.is_ascii_digit() || character == '.')
+        })
 }
 
 pub fn find_by_signature<'a>(
@@ -260,6 +279,33 @@ mod tests {
         assert_eq!(reqs.len(), 1);
         assert_eq!(reqs[0].method, "GET");
         assert_eq!(reqs[0].url, "https://example.com");
+    }
+
+    #[test]
+    fn parse_url_with_spaces() {
+        let src = "GET {{baseUrl}}/laws?query=raccolta differenziata\n";
+        let reqs = parse(src);
+
+        assert_eq!(
+            reqs[0].url,
+            "{{baseUrl}}/laws?query=raccolta differenziata"
+        );
+        assert!(find_by_signature(
+            &reqs,
+            "GET",
+            "{{baseUrl}}/laws?query=raccolta differenziata"
+        )
+        .is_some());
+    }
+
+    #[test]
+    fn parse_request_line_ignores_http_version() {
+        let reqs = parse("GET https://example.com/laws?query=waste collection HTTP/1.1\n");
+
+        assert_eq!(
+            reqs[0].url,
+            "https://example.com/laws?query=waste collection"
+        );
     }
 
     #[test]
