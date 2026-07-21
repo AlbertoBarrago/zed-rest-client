@@ -357,6 +357,36 @@ mod tests {
             Some("{\"url\":\"http://localhost:8000/api/v1\"}")
         );
     }
+
+    #[test]
+    fn substitute_nested_file_variables() {
+        let request = req("GET", "https://example.com");
+        let request = Request {
+            headers: vec![("Authorization".into(), "Bearer {{token}}".into())],
+            ..request
+        };
+        let variables = HashMap::from([
+            ("token".into(), "{{loginToken}}".into()),
+            ("loginToken".into(), "secret".into()),
+        ]);
+
+        let request = substitute_vars(request, &variables);
+
+        assert_eq!(request.headers[0].1, "Bearer secret");
+    }
+
+    #[test]
+    fn cyclic_variables_remain_unresolved() {
+        let request = req("GET", "https://example.com/{{a}}");
+        let variables = HashMap::from([
+            ("a".into(), "{{b}}".into()),
+            ("b".into(), "{{a}}".into()),
+        ]);
+
+        let request = substitute_vars(request, &variables);
+
+        assert_eq!(request.url, "https://example.com/{{a}}");
+    }
 }
 
 pub fn substitute_vars(mut req: Request, vars: &HashMap<String, String>) -> Request {
@@ -371,6 +401,14 @@ pub fn substitute_vars(mut req: Request, vars: &HashMap<String, String>) -> Requ
 }
 
 fn substitute(text: &str, vars: &HashMap<String, String>) -> String {
+    substitute_nested(text, vars, &mut Vec::new())
+}
+
+fn substitute_nested(
+    text: &str,
+    vars: &HashMap<String, String>,
+    resolving: &mut Vec<String>,
+) -> String {
     let mut output = String::with_capacity(text.len());
     let mut remaining = text;
 
@@ -379,7 +417,7 @@ fn substitute(text: &str, vars: &HashMap<String, String>) -> String {
         let after_open = &remaining[start + 2..];
         if let Some(end) = after_open.find("}}") {
             let expr = after_open[..end].trim();
-            output.push_str(&resolve_var(expr, vars));
+            output.push_str(&resolve_var(expr, vars, resolving));
             remaining = &after_open[end + 2..];
         } else {
             output.push_str("{{");
@@ -390,7 +428,11 @@ fn substitute(text: &str, vars: &HashMap<String, String>) -> String {
     output
 }
 
-fn resolve_var(expr: &str, vars: &HashMap<String, String>) -> String {
+fn resolve_var(
+    expr: &str,
+    vars: &HashMap<String, String>,
+    resolving: &mut Vec<String>,
+) -> String {
     if let Some(rest) = expr.strip_prefix('$') {
         // Built-in variables.
         match rest {
@@ -416,10 +458,21 @@ fn resolve_var(expr: &str, vars: &HashMap<String, String>) -> String {
         return resolved;
     }
 
-    // User-defined variable from the request or env file.
-    vars.get(expr)
-        .cloned()
-        .unwrap_or_else(|| format!("{{{{{}}}}}", expr))
+    // User-defined variable from the request or env file. Values may themselves
+    // contain variables, for example @token = {{login.response.body.access_token}}.
+    let Some(value) = vars.get(expr) else {
+        return format!("{{{{{}}}}}", expr);
+    };
+
+    const MAX_NESTING_DEPTH: usize = 32;
+    if resolving.len() >= MAX_NESTING_DEPTH || resolving.iter().any(|name| name == expr) {
+        return format!("{{{{{}}}}}", expr);
+    }
+
+    resolving.push(expr.to_string());
+    let resolved = substitute_nested(value, vars, resolving);
+    resolving.pop();
+    resolved
 }
 
 /// Resolves `name.response.(status|headers.X|body.$.path)` from the local cache.

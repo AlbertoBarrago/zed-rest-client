@@ -248,6 +248,27 @@ Authorization: Bearer {{token}}
 File-level variables override variables with the same name loaded from
 `.rest-client.env.json`.
 
+Variables can reference other variables and values from cached named responses.
+For example, run `login` once to cache its response, then use the captured token
+in subsequent requests:
+
+```http
+@baseUrl = http://localhost:8000/api/v1
+@token = {{login.response.body.access_token}}
+
+# @name login
+POST {{baseUrl}}/auth/token
+Content-Type: application/x-www-form-urlencoded
+
+username=admin&password=demo
+
+### Authenticated request
+GET {{baseUrl}}/admin/audit
+Authorization: Bearer {{token}}
+```
+
+Variable cycles are left unresolved instead of being expanded indefinitely.
+
 ### Built-in variables
 
 | Variable | Description |
